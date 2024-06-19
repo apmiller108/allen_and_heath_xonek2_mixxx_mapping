@@ -272,8 +272,8 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
         shift: function () {
             this.input = function (channel, control, value, status) {
                 direction = (value === 1) ? 1 : -1;
-                var gain = engine.getValue(this.group, "pregain");
-                engine.setValue(this.group, "pregain", gain + 0.025 * direction);
+                var rate = engine.getValue(this.group, "rate");
+                engine.setValue(this.group, "rate", rate + 0.025 * direction);
             };
         },
         supershift: function () {
