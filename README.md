@@ -33,9 +33,8 @@ This mapping supports multiple Xone:K2 units with different layouts based on MID
 ### Top Encoder
 | Mode | Function |
 |------|----------|
-| **Normal** | Jog wheel (scratch/nudge) |
-| **Shift** | Pregain adjustment |
-| **Supershift** | Quick Effect chain selector |
+| **Normal** | Jog wheel (nudge) |
+| **Shift** | Pitch adjustment |
 
 ### Encoder Press
 | Mode | Function |
@@ -43,16 +42,6 @@ This mapping supports multiple Xone:K2 units with different layouts based on MID
 | **Normal** | Sync toggle |
 | **Shift** | Quick Effect enable toggle |
 | **Supershift** | Reset pitch to zero |
-
-### Knobs (Top to Bottom)
-| Knob | Normal | Shift |
-|------|--------|-------|
-| **Knob 1** | High EQ | High EQ |
-| **Knob 2** | Mid EQ | Mid EQ |
-| **Knob 3** | Low EQ | Quick Effect Super Knob* |
-| **Fader** | Volume | Volume |
-
-*Quick Effect knob stays active until shift is pressed again
 
 ### Top Buttons (Left to Right)
 | Button | Normal | Shift | Supershift |
