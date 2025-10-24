@@ -263,6 +263,8 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
     this.deckString = '[Channel' + deckNumber + ']';
 
     this.encoder = new components.Encoder({
+        lastRateChangeTime: 0,
+
         unshift: function () {
             this.input = function (channel, control, value, status) {
                 direction = (value === 1) ? 1 : -1;
@@ -271,9 +273,28 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
         },
         shift: function () {
           this.input = function (channel, control, value, status) {
-                direction = (value === 1) ? -1 : 1 // Invert direction
-                var rate = engine.getValue(this.group, "rate");
-                engine.setValue(this.group, "rate", rate + 0.0025 * direction);
+              direction = (value === 1) ? -1 : 1;
+
+              var now = Date.now();
+              var timeDiff = now - this.lastRateChangeTime;
+              this.lastRateChangeTime = now;
+
+              // Faster turning of the encoder = bigger increment
+              var speedMultiplier = (timeDiff < 50) ? 3 : (timeDiff < 100) ? 2 : 1;
+
+              var currentRate = engine.getValue(this.group, "rate");
+              var fileBpm = engine.getValue(this.group, "file_bpm");
+              var rateRange = engine.getValue(this.group, "rateRange");
+
+              var desiredBpmChange = 0.1 * speedMultiplier;
+              var currentPitchChange = currentRate * rateRange;
+              var bpmChangeAsPercentage = desiredBpmChange / fileBpm;
+              var newPitchChange = currentPitchChange + (bpmChangeAsPercentage * direction);
+              var newRate = newPitchChange / rateRange;
+
+              // Clamp to the min/max of the rate slider
+              newRate = Math.max(-1.0, Math.min(1.0, newRate));
+              engine.setValue(this.group, "rate", newRate);
             };
         },
         supershift: function () {
