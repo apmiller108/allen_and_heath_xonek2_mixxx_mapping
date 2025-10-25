@@ -280,7 +280,7 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
               this.lastRateChangeTime = now;
 
               // Faster turning of the encoder = bigger increment
-              var speedMultiplier = (timeDiff < 50) ? 3 : (timeDiff < 100) ? 2 : 1;
+              var speedMultiplier = (timeDiff < 100) ? 2 : 1;
 
               var currentRate = engine.getValue(this.group, "rate");
               var fileBpm = engine.getValue(this.group, "file_bpm");
@@ -313,15 +313,15 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
             this.type = components.Button.prototype.types.toggle;
         },
         shift: function () {
-            this.group = '[QuickEffectRack1_' + theDeck.deckString + ']';
-            this.inKey = 'enabled';
-            this.type = components.Button.prototype.types.toggle;
+          this.group = theDeck.deckString;
+          this.inKey = 'rate_set_zero';
+          this.type = components.Button.prototype.types.push;
         },
         supershift: function () {
-            this.group = theDeck.deckString;
-            this.inKey = 'rate_set_zero';
-            this.type = components.Button.prototype.types.push;
-        },
+          // this.group = '[QuickEffectRack1_' + theDeck.deckString + ']';
+          // this.inKey = 'enabled';
+          // this.type = components.Button.prototype.types.toggle;
+      },
     });
 
     this.knobs = new components.ComponentContainer();
