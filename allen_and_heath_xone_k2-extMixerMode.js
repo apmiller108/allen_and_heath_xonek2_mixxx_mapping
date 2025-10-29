@@ -263,8 +263,6 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
     this.deckString = '[Channel' + deckNumber + ']';
 
     this.encoder = new components.Encoder({
-        lastRateChangeTime: 0,
-
         unshift: function () {
             this.input = function (channel, control, value, status) {
                 direction = (value === 1) ? 1 : -1;
@@ -275,18 +273,11 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
           this.input = function (channel, control, value, status) {
               direction = (value === 1) ? -1 : 1;
 
-              var now = Date.now();
-              var timeDiff = now - this.lastRateChangeTime;
-              this.lastRateChangeTime = now;
-
-              // Faster turning of the encoder = bigger increment
-              var speedMultiplier = (timeDiff < 100) ? 2 : 1;
-
               var currentRate = engine.getValue(this.group, "rate");
               var fileBpm = engine.getValue(this.group, "file_bpm");
               var rateRange = engine.getValue(this.group, "rateRange");
 
-              var desiredBpmChange = 0.1 * speedMultiplier;
+              var desiredBpmChange = 0.1
               var currentPitchChange = currentRate * rateRange;
               var bpmChangeAsPercentage = desiredBpmChange / fileBpm;
               var newPitchChange = currentPitchChange + (bpmChangeAsPercentage * direction);
@@ -313,9 +304,9 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
             this.type = components.Button.prototype.types.toggle;
         },
         shift: function () {
-          this.group = theDeck.deckString;
-          this.inKey = 'rate_set_zero';
-          this.type = components.Button.prototype.types.push;
+            this.group = theDeck.deckString;
+            this.inKey = 'rate_set_zero';
+            this.type = components.Button.prototype.types.push;
         },
         supershift: function () {
           // this.group = '[QuickEffectRack1_' + theDeck.deckString + ']';
