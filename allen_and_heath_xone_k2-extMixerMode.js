@@ -3,6 +3,70 @@ var XoneK2 = {};
 XoneK2.seekRateFast = 3.0;
 XoneK2.seekRateSlow = 0.5;
 
+// Top encoder "jog wheel" tuning.
+// While playing: each detent adds this much to the deck's jog accumulator (nudge).
+XoneK2.jogNudgeAmount = 3;
+// While paused: the encoder scrubs via Mixxx's scratch engine, like a jog wheel.
+// Lower intervalsPerRev = each detent moves further through the track.
+XoneK2.scrubIntervalsPerRev = 32;
+XoneK2.scrubRpm = 33 + 1 / 3;
+XoneK2.scrubAlpha = 1 / 8;
+XoneK2.scrubBeta = XoneK2.scrubAlpha / 32;
+// How long after the last detent before scratch mode is released.
+XoneK2.scrubReleaseMs = 250;
+
+XoneK2.scrubTimers = {};
+XoneK2.scrubPlayConnections = {};
+
+XoneK2.stopScrub = function (deck) {
+    if (XoneK2.scrubTimers[deck]) {
+        engine.stopTimer(XoneK2.scrubTimers[deck]);
+        XoneK2.scrubTimers[deck] = 0;
+    }
+    if (engine.isScratching(deck)) {
+        engine.scratchDisable(deck, false);
+    }
+};
+
+XoneK2.jogEncoderTurn = function (group, direction) {
+    var deck = script.deckFromGroup(group);
+
+    if (engine.getValue(group, 'play')) {
+        XoneK2.stopScrub(deck);
+        // 'jog' is an accumulator the engine consumes and resets every audio
+        // buffer. Add to it instead of overwriting so fast turns don't drop
+        // detents that arrive within the same buffer.
+        engine.setValue(group, 'jog',
+                        engine.getValue(group, 'jog') + direction * XoneK2.jogNudgeAmount);
+        return;
+    }
+
+    // Paused: scrub smoothly through the track with the scratch engine.
+    if (!engine.isScratching(deck)) {
+        engine.scratchEnable(deck, XoneK2.scrubIntervalsPerRev, XoneK2.scrubRpm,
+                             XoneK2.scrubAlpha, XoneK2.scrubBeta, false);
+    }
+    engine.scratchTick(deck, direction);
+
+    // Scratching overrides playback, so release it as soon as play is pressed
+    // instead of waiting for the release timer.
+    if (!XoneK2.scrubPlayConnections[deck]) {
+        XoneK2.scrubPlayConnections[deck] = engine.makeConnection(group, 'play', function (value) {
+            if (value) {
+                XoneK2.stopScrub(deck);
+            }
+        });
+    }
+
+    if (XoneK2.scrubTimers[deck]) {
+        engine.stopTimer(XoneK2.scrubTimers[deck]);
+    }
+    XoneK2.scrubTimers[deck] = engine.beginTimer(XoneK2.scrubReleaseMs, function () {
+        XoneK2.scrubTimers[deck] = 0;
+        XoneK2.stopScrub(deck);
+    }, true);
+};
+
 XoneK2.decksInMiddleMidiChannel = 0xE;
 XoneK2.effectsInMiddleMidiChannel = 0xD;
 XoneK2.decksOnLeftMidiChannel = 0xC;
@@ -104,11 +168,34 @@ XoneK2.shutdown = function(id) {
     var turnOff = function (component) {
         component.send(0);
     };
-    for (var z = 1; z <= 4; z++) {
-        XoneK2.controllers[XoneK2.effectsMidiChannel].columns[z].forEachComponent(turnOff);
-        XoneK2.controllers[XoneK2.decksMidiChannel].columns[z].forEachComponent(turnOff);
+    // Each layout lives on its own MIDI channel, so turn off the LEDs for
+    // every channel that has columns set up.
+    for (var ch = 0; ch < XoneK2.controllers.length; ++ch) {
+        var hasDeck = false;
+        for (var z = 1; z <= 4; z++) {
+            var column = XoneK2.controllers[ch].columns[z];
+            if (column === undefined) {
+                continue;
+            }
+            column.forEachComponent(turnOff);
+            if (column instanceof components.Deck) {
+                hasDeck = true;
+            }
+        }
+        if (hasDeck) {
+            // Layer button LED (any of its three color notes may be lit).
+            for (var color in XoneK2.layerButtonColors) {
+                midi.sendShortMsg(0x80 + ch, XoneK2.layerButtonColors[color], 0x7F);
+            }
+        }
     }
-}
+
+    // Script timers are stopped when the mapping unloads, so a pending scrub
+    // release would never fire and leave the deck stuck in scratch mode.
+    for (var deck in XoneK2.scrubTimers) {
+        XoneK2.stopScrub(parseInt(deck, 10));
+    }
+};
 
 
 XoneK2.decksBottomLeftEncoderPress = function (channel, control, value, status) {
@@ -265,8 +352,8 @@ XoneK2.Deck = function (column, deckNumber, midiChannel) {
     this.encoder = new components.Encoder({
         unshift: function () {
             this.input = function (channel, control, value, status) {
-                direction = (value === 1) ? 1 : -1;
-                engine.setValue(this.group, "jog", direction * 3);
+                var direction = (value === 1) ? 1 : -1;
+                XoneK2.jogEncoderTurn(this.group, direction);
             };
         },
         shift: function () {
